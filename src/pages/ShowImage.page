@@ -1,0 +1,124 @@
+<apex:page showHeader="false">
+
+
+<apex:includeScript value="{!URLFOR($Resource.CameraResource, 'js/jquery.min.js')}" />
+<apex:includeScript value="{!URLFOR($Resource.CameraResource, 'js/jquery.blockUI.js')}" />
+
+<script type="text/javascript">
+var __sfdcSessionId = '{!GETSESSIONID()}';
+</script>
+<script src="../../soap/ajax/30.0/connection.js" type="text/javascript"></script>
+
+
+<style type="text/css">
+#image {
+  max-width: 100%;
+  height: auto;
+}
+</style>
+
+<div id="txt">
+</div>
+
+<div id="touchBox">
+    <img src="" id="image" onClick="clichImage()" />
+</div>
+<button class="btn btn-large btn-primary" type="button" onClick="sforce.one.navigateToURL('/apex/SelectItem');">癒し設定へ</button>
+<br/><br/>
+<a href="http://bjin.me/">powered by Bjin.Me</a>
+
+<script type="text/javascript">
+
+var imagList = null;
+var index = 0;
+
+$(document).ready(function(){
+
+    //ロード開始
+    $.blockUI({ message:'<h1><img src="/img/loading32.gif" /></h1>' });
+
+	//画像サイズ調整
+    var width_win = $(window).width();
+    var height_win = $(window).height();
+
+    $("#image").attr('width' , width_win + "px");
+    $("#image").height('src' , height_win + "px");
+
+
+    var img = document.getElementById("image");
+	//画像読み込み後のイベント
+    img.onload = function() {
+        //ロードストップ
+        $.unblockUI();
+    }
+
+	//表示する画像id デフォルト値:53
+	var targetId = '53;'
+
+	var query = "select id, TargetId__c from ShowImageInfo__c where UniqueKey__c = '{!$User.id}'";
+	//取得する
+	var queryResults = sforce.connection.query(query);
+
+	<!-- 1件以上取得できたら'records'レコード情報を -->
+	<!-- 配列として取得 -->
+	if (queryResults != null){
+		if (queryResults.size > 0){
+  			var records = queryResults.getArray('records');
+		    for (var i=0; i<records.length; i++) {
+				targetId = records[i].TargetId__c;
+			}
+		}
+	}
+
+    imagList = new Array();
+
+    $.ajax({
+       type: "GET",
+       url: "http://bjin.me/api/",
+       data: "type=detail&count=100&format=xml&id=" + targetId,
+       success: function(xml){
+            //alert( "Data Saved: " + xml );
+
+            $(xml).find('item').each(function(i){
+
+                var thumb = $(this).find('thumb').text();
+
+                //サムネイルから本画像へ置換
+                thumb = thumb.replace("images/", "images/pic");
+                imagList.push(thumb)
+            });
+
+            //画像セット
+            setImage(imagList[0]);
+       }
+     });
+
+});
+
+function touchHandler(e){
+
+    $.blockUI({ message:'<h1><img src="/img/loading32.gif" /></h1>' });
+
+    index++;
+    //画像セット
+    setImage(imagList[index]);
+
+}
+function clichImage(){
+
+    $.blockUI({ message:'<h1><img src="/img/loading32.gif" /></h1>' });
+    index++;
+    //画像セット
+    setImage(imagList[index]);
+
+}
+
+
+
+function setImage(imgPath){
+
+    $("#image").attr('src' , imgPath);
+}
+</script>
+
+</apex:page>

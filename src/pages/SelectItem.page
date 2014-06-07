@@ -1,0 +1,166 @@
+<apex:page showHeader="false">
+
+
+<apex:includeScript value="{!URLFOR($Resource.CameraResource, 'js/jquery.min.js')}" />
+<apex:includeScript value="{!URLFOR($Resource.CameraResource, 'js/jquery.blockUI.js')}" />
+
+
+<script type="text/javascript">
+var __sfdcSessionId = '{!GETSESSIONID()}';
+</script>
+<script src="../../soap/ajax/30.0/connection.js" type="text/javascript"></script>
+
+
+<style type="text/css">
+
+#image_list_area {
+  orver-flow: hidden;
+  padding: 20px 0 20px 10px;
+}
+#image_list_area ul{
+	list-style:none;
+}
+
+#image_list_area li{
+  float: left;
+  /*
+  width: 100px;
+  height: 100px;
+  */
+  margin: 0 10px 10px 0;
+}
+
+
+</style>
+
+<div id="image_list_area">
+</div>
+
+<div style="clear:both;">
+<button  class="btn btn-large btn-primary" type="button" onClick="reload();">リロード</button>
+<button  class="btn btn-large btn-primary" type="button" onClick="sforce.one.navigateToURL('/apex/ShowImage');">癒しへ</button>
+<br/><br/>
+<a href="http://bjin.me/">powered by Bjin.Me</a>
+</div>
+<script type="text/javascript">
+
+var imagList = null;
+var index = 0;
+
+$(document).ready(function(){
+	//画像取得
+	getImage();
+});
+
+function getImage(){
+
+    //ロード開始
+    $.blockUI({ message:'<h1><img src="/img/loading32.gif" /></h1>' });
+
+	var url = "http://bjin.me/api/?type=rand&count=20&format=json";
+
+	var ul_item = $("<ul>");
+
+	$.getJSON(url, function(data){
+
+		for(var i in data){
+			//li
+			var li_item = $("<li>");
+			//img
+			li_item.append("<a href=\"javascript:void(0);\" onClick=\"choiceImage('" + data[i].category + "')\" ><img class=\"imgStyle\" src=\"" + data[i].thumb + "\" ><br/>" + data[i].category + "</a>");
+			ul_item.append(li_item);
+		}
+
+		//リストに追加
+		$("#image_list_area").append(ul_item);
+
+		//リサイズ
+        var fw = 70;        //fixed width
+        var fh = 70;        //fixed height
+        var sl = 'img.imgStyle'; //selector
+        $(sl).each(function(){
+            var w = $(this).width();
+            var h = $(this).height();
+            if (w >= h) {
+                $(this).width(fw);
+            } else {
+                $(this).height(fh);
+            }
+        });
+
+        //ロードストップ
+        $.unblockUI();
+	});
+
+
+}
+
+//
+function choiceImage(obj){
+
+    //ロード開始
+    $.blockUI({ message:'<h1><img src="/img/loading32.gif" /></h1>' });
+
+	var category = obj;
+
+	var url = "http://bjin.me/api/?type=search&count=10&format=json&query="+category;
+
+	var targetId= null;
+
+	//選択した画像のidを取得
+	$.getJSON(url, function(data){
+
+		//idを取得
+		for(var i in data){
+
+			targetId = data[i].id
+		}
+
+		var showImageInfo = new sforce.SObject("ShowImageInfo__c");
+		showImageInfo.UniqueKey__c = "{!$User.Id}";
+		showImageInfo.SettingPerson__c = "{!$User.Id}";
+		showImageInfo.TargetId__c = targetId;
+		showImageInfo.TargetName__c = category;
+
+		var result = sforce.connection.upsert("UniqueKey__c", [showImageInfo]);
+
+		if(result[0].getBoolean("success")) {
+
+			alert(category + " に更新しました！！ ");
+
+			//画像表示ページへ遷移
+			sforce.one.navigateToURL('/apex/ShowImage');
+		}
+		else {
+			alert("失敗！!");
+		}
+
+        //ロードストップ
+        $.unblockUI();
+
+	})
+	.success(function(json) {
+	    console.log("成功");
+	})
+	.error(function(jqXHR, textStatus, errorThrown) {
+	    console.log("エラー：" + textStatus);
+	    console.log("テキスト：" + jqXHR.responseText);
+	})
+	.complete(function() {
+	    console.log("完了");
+	});
+
+}
+
+function reload(){
+
+ 	$("ul").remove();
+	//画像取得
+	getImage();
+
+}
+
+
+</script>
+
+</apex:page>
